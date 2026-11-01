@@ -28,7 +28,8 @@ public:
 #endif
 
     template<std::size_t I> requires (I < sizeof...(Stages))
-    [[nodiscard]] constexpr stage_type<I>& stage() noexcept { return std::get<I>(stages_); }
+    // Deduced return avoids GCC 15's incomplete type-pack-index ABI mangling.
+    [[nodiscard]] constexpr auto& stage() noexcept { return std::get<I>(stages_); }
 
     [[nodiscard]] constexpr bool operator()(event& e) noexcept {
         return std::apply([&](auto&... stage) noexcept { return (stage(e) && ...); }, stages_);
