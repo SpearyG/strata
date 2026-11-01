@@ -105,6 +105,11 @@ int execute(int argc, char** argv) {
 } // namespace
 
 int main(int argc, char** argv) {
-    try { return execute(argc, argv); }
+    try {
+        const auto result = execute(argc, argv);
+        std::cout.flush();
+        if (!std::cout) { std::cerr << "failed writing stdout\n"; return 1; }
+        return result;
+    }
     catch (const std::exception& exception) { std::cerr << exception.what() << '\n'; return 1; }
 }

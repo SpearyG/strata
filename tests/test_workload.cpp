@@ -73,6 +73,34 @@ void deterministic_generator_test() {
     check(seed_changes_output && work_changes_output, "seed/work must affect observable payload");
 }
 
+void fingerprint_test() {
+    const strata::event sample{41, 7, 23.5, 987'654};
+    const auto expected = strata::workload::fingerprint(sample);
+    auto changed = sample;
+    ++changed.sequence;
+    check(strata::workload::fingerprint(changed) != expected, "fingerprint includes sequence");
+    changed = sample;
+    ++changed.series;
+    check(strata::workload::fingerprint(changed) != expected, "fingerprint includes series");
+    changed = sample;
+    changed.value += 1.0;
+    check(strata::workload::fingerprint(changed) != expected, "fingerprint includes value bits");
+    changed = sample;
+    ++changed.timestamp_ns;
+    check(strata::workload::fingerprint(changed) != expected, "fingerprint includes source timestamp");
+
+    auto one_key = small_options();
+    one_key.runtime.series_count = 1;
+    auto many_keys = one_key;
+    many_keys.runtime.series_count = 1024;
+    std::uint64_t one_fingerprint = 0, many_fingerprint = 0;
+    for (std::uint64_t i = 0; i < 1000; ++i) {
+        one_fingerprint += strata::workload::fingerprint(strata::workload::generate(i, one_key));
+        many_fingerprint += strata::workload::fingerprint(strata::workload::generate(i, many_keys));
+    }
+    check(one_fingerprint != many_fingerprint, "routing workload affects source fingerprint");
+}
+
 void compare_series(const strata::engine_snapshot& actual, const strata::workload::options& settings) {
     std::vector<std::uint64_t> counts(settings.runtime.series_count);
     std::vector<long double> sums(settings.runtime.series_count);
@@ -101,6 +129,10 @@ void run_accounting_test() {
     check(result->metrics.discarded == 0 && result->metrics.rejected == 0, "drained workload has no losses");
     check(result->metrics.latency.count() == settings.events, "latency covers every processed event");
     check(result->elapsed.count() > 0 && result->events_per_second() > 0.0, "throughput timing");
+    std::uint64_t expected_fingerprint = 0;
+    for (std::uint64_t i = 0; i < settings.events; ++i)
+        expected_fingerprint += strata::workload::fingerprint(strata::workload::generate(i, settings));
+    check(result->fingerprint == expected_fingerprint, "run fingerprints complete accepted payloads");
     compare_series(result->metrics, settings);
     auto single_producer = settings;
     single_producer.producers = 1;
@@ -171,11 +203,12 @@ int main() {
     try {
         parser_test();
         deterministic_generator_test();
+        fingerprint_test();
         run_accounting_test();
         disabled_latency_and_work_test();
         cancellation_test();
         replay_integration_test();
-        std::cout << "6 workload test groups passed\n";
+        std::cout << "7 workload test groups passed\n";
         return 0;
     } catch (const std::exception& exception) {
         std::cerr << "workload test failed: " << exception.what() << '\n';

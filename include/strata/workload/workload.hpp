@@ -32,6 +32,8 @@ struct run_result {
 
 // Each sample depends only on sequence, seed and configuration, never scheduling.
 [[nodiscard]] event generate(std::uint64_t sequence, const options& settings) noexcept;
+// Non-cryptographic, order-independent run checksums sum this complete payload hash.
+[[nodiscard]] std::uint64_t fingerprint(const event& sample) noexcept;
 [[nodiscard]] std::expected<void, error> validate(const options& settings);
 [[nodiscard]] std::expected<run_result, error> run(const options& settings,
                                                  std::stop_token stop = {});

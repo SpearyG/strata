@@ -17,14 +17,20 @@ std::atomic<bool> interrupted{false};
 static_assert(std::atomic<bool>::is_always_lock_free);
 extern "C" void on_interrupt(int) { interrupted.store(true, std::memory_order_relaxed); }
 
-void print_error(std::string_view message) {
-    std::cerr << "{\"error\":\"";
+void write_json_string(std::ostream& out, std::string_view message) {
+    out << '"';
     for (const auto c : message) {
-        if (c == '"' || c == '\\') std::cerr << '\\' << c;
-        else if (static_cast<unsigned char>(c) < 0x20U) std::cerr << ' ';
-        else std::cerr << c;
+        if (c == '"' || c == '\\') out << '\\' << c;
+        else if (static_cast<unsigned char>(c) < 0x20U) out << ' ';
+        else out << c;
     }
-    std::cerr << "\"}\n";
+    out << '"';
+}
+
+void print_error(std::string_view message) {
+    std::cerr << "{\"error\":";
+    write_json_string(std::cerr, message);
+    std::cerr << "}\n";
 }
 
 std::expected<void, strata::error> record(const std::filesystem::path& path,
@@ -90,31 +96,55 @@ int execute(int argc, char** argv) {
         auto created = strata::engine::create(settings.runtime);
         if (!created) { print_error(created.error().message); return 1; }
         auto& engine = **created;
+        std::uint64_t accepted = 0, fingerprint = 0, frames = 0;
         const auto started = std::chrono::steady_clock::now();
         const auto replayed = strata::storage::replay(replay_path,
             [&](std::span<const strata::event> events) -> std::expected<void, strata::error> {
                 for (const auto& event : events) {
                     if (const auto result = engine.submit(event, stop); !result) return result;
+                    ++accepted;
+                    fingerprint += strata::workload::fingerprint(event);
                 }
+                ++frames;
                 return {};
             });
-        if (!replayed) {
+        // The signal handler can run before the monitor's next polling interval,
+        // including after replay's final callback. Preserve that cancellation.
+        if (interrupted.load(std::memory_order_relaxed)) cancellation.request_stop();
+        const auto replay_cancelled = !replayed && replayed.error().code == strata::errc::cancelled;
+        if (!replayed && !replay_cancelled) {
             engine.cancel(); print_error(replayed.error().message);
-            return replayed.error().code == strata::errc::cancelled ? 130 : 1;
+            return 1;
         }
-        engine.close();
-        auto metrics = engine.snapshot();
-        if (!metrics) { print_error(metrics.error().message); return 1; }
+        if (stop.stop_requested() || replay_cancelled) engine.cancel();
+        else engine.close();
         const auto elapsed = std::chrono::duration_cast<std::chrono::nanoseconds>(
             std::chrono::steady_clock::now() - started);
+        monitor.request_stop();
+        monitor.join();
+        const auto cancelled = replay_cancelled || stop.stop_requested() ||
+                               interrupted.load(std::memory_order_relaxed);
+        auto metrics = engine.snapshot();
+        if (!metrics) { print_error(metrics.error().message); return 1; }
+        if (metrics->accepted != accepted || metrics->accepted != metrics->processed + metrics->discarded) {
+            print_error("replay runtime count invariant failed"); return 1;
+        }
         settings.producers = 1;
-        settings.events = replayed->events;
-        strata::workload::run_result result{std::move(*metrics), elapsed, replayed->events, 0, false};
-        std::cout << "{\"replay_frames\":" << replayed->frames
-                  << ",\"truncated_tail\":" << (replayed->truncated_tail ? "true" : "false") << ",\"run\":";
+        settings.events = accepted;
+        strata::workload::run_result result{std::move(*metrics), elapsed, accepted, fingerprint, cancelled};
+        std::cout << "{\"replay_frames\":" << frames
+                  << ",\"replay_complete\":" << (replayed ? "true" : "false")
+                  << ",\"truncated_tail\":";
+        if (replayed) std::cout << (replayed->truncated_tail ? "true" : "false");
+        else std::cout << "null";
+        if (cancelled) {
+            std::cout << ",\"error\":";
+            write_json_string(std::cout, replayed ? "replay cancelled" : replayed.error().message);
+        }
+        std::cout << ",\"run\":";
         strata::workload::write_json(std::cout, settings, result);
         std::cout << "}\n";
-        return 0;
+        return cancelled ? 130 : 0;
     }
     auto result = strata::workload::run(settings, stop);
     if (!result) { print_error(result.error().message); return 1; }
@@ -125,6 +155,11 @@ int execute(int argc, char** argv) {
 } // namespace
 
 int main(int argc, char** argv) {
-    try { return execute(argc, argv); }
+    try {
+        const auto result = execute(argc, argv);
+        std::cout.flush();
+        if (!std::cout) { print_error("failed writing stdout"); return 1; }
+        return result;
+    }
     catch (const std::exception& exception) { print_error(exception.what()); return 1; }
 }
