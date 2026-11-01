@@ -1,0 +1,12 @@
+{
+  "version": 6,
+  "cmakeMinimumRequired": {"major": 3, "minor": 30, "patch": 0},
+  "configurePresets": [
+    {"name":"debug","generator":"Ninja","binaryDir":"${sourceDir}/build/debug","cacheVariables":{"CMAKE_BUILD_TYPE":"Debug"}},
+    {"name":"release","inherits":"debug","binaryDir":"${sourceDir}/build/release","cacheVariables":{"CMAKE_BUILD_TYPE":"Release"}},
+    {"name":"asan","inherits":"debug","binaryDir":"${sourceDir}/build/asan","cacheVariables":{"STRATA_ENABLE_ASAN":"ON","STRATA_ENABLE_UBSAN":"ON"}},
+    {"name":"tsan","inherits":"debug","binaryDir":"${sourceDir}/build/tsan","cacheVariables":{"STRATA_ENABLE_TSAN":"ON"}}
+  ],
+  "buildPresets": [{"name":"debug","configurePreset":"debug"},{"name":"release","configurePreset":"release"},{"name":"asan","configurePreset":"asan"},{"name":"tsan","configurePreset":"tsan"}],
+  "testPresets": [{"name":"debug","configurePreset":"debug","output":{"outputOnFailure":true}},{"name":"asan","configurePreset":"asan","output":{"outputOnFailure":true}},{"name":"tsan","configurePreset":"tsan","output":{"outputOnFailure":true}}]
+}
