@@ -1,0 +1,8 @@
+cmake_minimum_required(VERSION 3.30)
+project(strata_installed_consumer LANGUAGES CXX)
+find_package(strata 0.1 CONFIG REQUIRED)
+add_executable(consumer main.cpp)
+target_link_libraries(consumer PRIVATE strata::strata)
+enable_testing()
+add_test(NAME consume_installed_library COMMAND consumer)
+set_tests_properties(consume_installed_library PROPERTIES TIMEOUT 10)
