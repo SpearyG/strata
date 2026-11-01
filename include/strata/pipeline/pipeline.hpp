@@ -13,6 +13,15 @@ concept event_stage = requires(T& stage, event& e) {
     { stage(e) } noexcept -> std::same_as<bool>;
 };
 
+#if defined(__cpp_pack_indexing) && __cpp_pack_indexing >= 202311L && !defined(STRATA_FORCE_PACK_FALLBACK)
+namespace detail {
+template<std::size_t I, class... Types> requires (I < sizeof...(Types))
+struct indexed_stage {
+    using type = Types...[I];
+};
+} // namespace detail
+#endif
+
 // A failed stage short-circuits admission. Stages own their state by value;
 // callers synchronize a pipeline if they give a stage mutable shared state.
 template<event_stage... Stages>
@@ -22,7 +31,8 @@ public:
 
     template<std::size_t I> requires (I < sizeof...(Stages))
 #if defined(__cpp_pack_indexing) && __cpp_pack_indexing >= 202311L && !defined(STRATA_FORCE_PACK_FALLBACK)
-    using stage_type = Stages...[I];
+    // Defer indexing until this alias is requested, including for an empty pipeline.
+    using stage_type = typename detail::indexed_stage<I, Stages...>::type;
 #else
     using stage_type = std::tuple_element_t<I, std::tuple<Stages...>>;
 #endif
@@ -51,6 +61,6 @@ template<std::size_t Workers, std::size_t Capacity, std::size_t Batch>
 consteval bool valid_topology() {
     return Workers > 0 && Workers <= 256 && Capacity > 0 &&
         Capacity <= (1U << 24U) && Batch > 0 && Batch <= Capacity &&
-        Workers * Capacity <= (1U << 24U);
+        Capacity <= (1U << 24U) / Workers;
 }
 } // namespace strata

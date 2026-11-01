@@ -20,7 +20,7 @@ struct config {
         return std::unexpected(error{errc::invalid_config, "invalid worker, queue, batch or series limit"});
     }
     // Reject excessive allocations before constructing any worker or queue.
-    if (c.workers * c.queue_capacity > (1U << 24U)) {
+    if (c.queue_capacity > (1U << 24U) / c.workers) {
         return std::unexpected(error{errc::invalid_config, "total queue capacity exceeds 16777216 events"});
     }
     return {};
