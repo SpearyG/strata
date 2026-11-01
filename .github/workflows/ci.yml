@@ -74,7 +74,4 @@ jobs:
           cmake --build build/fallback -j 2
           ctest --test-dir build/fallback --output-on-failure -j 2
       - name: Clang static analysis
-        run: |
-          for source in src/*.cpp; do
-            clang++-21 --analyze -std=c++26 -Iinclude -Xanalyzer -analyzer-output=text "$source"
-          done
+        run: STRATA_ANALYZER=clang++-21 sh tools/analyze.sh
