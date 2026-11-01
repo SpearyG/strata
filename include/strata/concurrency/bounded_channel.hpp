@@ -42,7 +42,10 @@ public:
 
     [[nodiscard]] std::expected<void, error> push(T item, std::stop_token stop = {}) {
         std::unique_lock lock(mutex_);
-        if (!not_full_.wait(lock, stop, [this] { return state_ != state::open || size_ < slots_.size(); }) ||
+        // The queue lock keeps readiness stable; register cancellation only when
+        // blocking, while checking stop before every acceptance on both paths.
+        if ((state_ == state::open && size_ == slots_.size() &&
+             !not_full_.wait(lock, stop, [this] { return state_ != state::open || size_ < slots_.size(); })) ||
             stop.stop_requested()) {
             ++rejected_;
             return std::unexpected(error{errc::cancelled, "submission cancelled"});
