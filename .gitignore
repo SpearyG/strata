@@ -1,0 +1,14 @@
+/build*/
+/out/
+/.cache/
+/.idea/
+/.vscode/
+*.user
+*.profraw
+*.profdata
+*.log
+*.strata
+*.csv
+__pycache__/
+.DS_Store
+Thumbs.db
