@@ -112,7 +112,8 @@ validated target; Windows users can use WSL2 with these Linux toolchains.
 standard downgrade. CMake compile-checks `std::expected`. C++26 pack indexing
 (`Stages...[I]`) selects a pipeline's stage type when
 `__cpp_pack_indexing >= 202311L`; `std::tuple_element_t` supplies the equivalent
-fallback. Both paths are tested with `STRATA_FORCE_PACK_FALLBACK=ON`. The stage
+fallback. Default builds exercise pack indexing; `STRATA_FORCE_PACK_FALLBACK=ON`
+exercises the fallback. The stage
 accessor uses a deduced return type to avoid GCC 15's incomplete pack-index type
 ABI mangling. No reflection, contracts or unavailable library features are assumed.
 Concepts, requires expressions, variadic folds, `consteval` topology validation and
@@ -161,6 +162,8 @@ directories when changing compilers. `RelWithDebInfo` is also supported. Optiona
 flags: `STRATA_ENABLE_LTO`, `STRATA_NATIVE` (nonportable generated instructions),
 `STRATA_WARNINGS_AS_ERRORS`, `BUILD_TESTING`, `STRATA_BUILD_EXAMPLES`, and
 `STRATA_BUILD_BENCHMARKS`. Sanitizer options target GCC/Clang on Linux.
+Clang sanitizer builds need their compiler runtime package (for Ubuntu 26.04,
+`libclang-rt-21-dev`); CI installs it explicitly.
 
 To consume the installed library:
 
@@ -240,7 +243,7 @@ optimization evidence, latency and environment details.
 - No crash durability, file locking, disk quotas or authenticated framing.
 - Mutex fairness depends on the OS scheduler; cancellation is cooperative.
 - Floating moments can differ in final bits across producer schedules. Counts and
-  extrema are deterministic for an identical accepted set; cross-shard order is not.
+  numeric extrema are deterministic for an identical accepted set; cross-shard order is not.
 - uint64 counters are finite; no overflow recovery for indefinitely running engines.
 - Default topology is explicit rather than automatically tuned for a machine.
 

@@ -122,10 +122,20 @@ a deployment topology. No hard realtime or p99 guarantee is claimed.
 
 ## Verification record
 
-The development tree passed GCC Debug and Release builds, Clang strict builds,
-ASan+UBSan (with leak detection), and separate TSan runtime/unit checks. Full final
-checkout validation is performed before publication; its exact commit, complete
-test/sanitizer outcomes and additional benchmark are reported with the delivery.
+The development tree passed GCC Debug and Release builds and Clang strict builds.
+A clean clone at `8548991` passed all 11 CTest targets in each of three independently
+configured builds: GCC Release, Clang ASan+UBSan (with leak detection), and Clang
+TSan. Separate GCC RelWithDebInfo + LTO + forced pack fallback passed all 11 tests.
+Clang static analysis of every library source emitted no diagnostics. An external
+CMake client consumed the installed package successfully. Six extra CLI validation
+cases returned JSON errors, and a real SIGINT run exited 130 with consistent
+accepted/processed/discarded accounting.
+
+The [first complete GitHub Actions run](https://github.com/SpearyG/strata/actions/runs/41344480959)
+passed all seven jobs: GCC/Clang Debug/Release, ASan+UBSan, TSan, and fallback/LTO
+with static analysis. Later documentation and analysis-runner changes do not alter
+the measured C++ implementation. The final delivery reports the final commit's
+clean builds, sanitizer checks and additional longer benchmark separately.
 
 Coverage includes finite/NaN/overflow validation, pipeline short circuit, channel
 FIFO/wraparound/close/cancel, movable ownership, MPMC exact transfer, randomized
