@@ -44,7 +44,9 @@ public:
 
     // Failed admission leaves an rvalue argument unchanged, allowing ownership to
     // stay with the producer for retry or alternate delivery.
-    [[nodiscard]] std::expected<void, error> push(T&& item, std::stop_token stop = {}) {
+    // The token is borrowed only for this synchronous call. Avoid copying its
+    // shared ownership counter on ready queues; a blocking wait takes its own copy.
+    [[nodiscard]] std::expected<void, error> push(T&& item, const std::stop_token& stop = {}) {
         std::unique_lock lock(mutex_);
         // The queue lock keeps readiness stable; register cancellation only when
         // blocking, while checking stop before every acceptance on both paths.
@@ -63,7 +65,7 @@ public:
         return {};
     }
 
-    [[nodiscard]] std::expected<void, error> push(const T& item, std::stop_token stop = {})
+    [[nodiscard]] std::expected<void, error> push(const T& item, const std::stop_token& stop = {})
         requires std::copy_constructible<T> {
         T copy(item);
         return push(std::move(copy), stop);

@@ -45,7 +45,7 @@ public:
     engine(engine&&) = delete;
     engine& operator=(engine&&) = delete;
 
-    [[nodiscard]] std::expected<void, error> submit(event item, std::stop_token stop = {});
+    [[nodiscard]] std::expected<void, error> submit(event item, const std::stop_token& stop = {});
     [[nodiscard]] std::expected<void, error> try_submit(event item);
     void close() noexcept;
     void cancel() noexcept;

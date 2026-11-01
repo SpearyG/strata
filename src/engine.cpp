@@ -129,7 +129,7 @@ std::expected<std::unique_ptr<engine>, error> engine::create(config configuratio
     return result;
 }
 
-std::expected<void, error> engine::submit(event item, std::stop_token stop) {
+std::expected<void, error> engine::submit(event item, const std::stop_token& stop) {
     const auto attempted = impl_->configuration.measure_latency ? steady_now_ns() : 0;
     auto validation = pipeline{validate_event{impl_->configuration.series_count}};
     if (!validation(item)) {
