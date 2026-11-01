@@ -12,11 +12,12 @@
 #include <strata/workload/workload.hpp>
 
 namespace strata::workload {
-template <std::unsigned_integral T>
+template <std::unsigned_integral T> requires (!std::same_as<T, bool>)
 [[nodiscard]] std::expected<T, error> parse_unsigned(std::string_view text) {
+    if (text.empty()) return std::unexpected(error{errc::invalid_config, "expected an unsigned decimal integer"});
     T value{};
     const auto [end, code] = std::from_chars(text.data(), text.data() + text.size(), value);
-    if (text.empty() || code != std::errc{} || end != text.data() + text.size()) {
+    if (code != std::errc{} || end != text.data() + text.size()) {
         return std::unexpected(error{errc::invalid_config, "expected an unsigned decimal integer: " + std::string(text)});
     }
     return value;
