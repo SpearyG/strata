@@ -1,0 +1,80 @@
+name: ci
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    container: ubuntu:26.04
+    strategy:
+      fail-fast: false
+      matrix:
+        compiler: [g++-15, clang++-21]
+        mode: [Debug, Release]
+    steps:
+      - name: Install toolchain
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends ca-certificates git cmake ninja-build g++-15 clang-21
+      - uses: actions/checkout@v4
+      - name: Configure
+        run: cmake -S . -B build/ci -G Ninja -DCMAKE_BUILD_TYPE=${{ matrix.mode }} -DCMAKE_CXX_COMPILER=${{ matrix.compiler }}
+      - name: Build
+        run: cmake --build build/ci -j 2
+      - name: Test
+        run: ctest --test-dir build/ci --output-on-failure -j 2
+      - name: Install library
+        run: cmake --install build/ci --prefix /tmp/strata-install
+  sanitizers:
+    runs-on: ubuntu-24.04
+    container: ubuntu:26.04
+    strategy:
+      fail-fast: false
+      matrix:
+        sanitizer: [address-undefined, thread]
+    steps:
+      - name: Install toolchain
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends ca-certificates git cmake ninja-build g++-15 clang-21 libclang-rt-21-dev
+      - uses: actions/checkout@v4
+      - name: Configure
+        shell: bash
+        run: |
+          flags=(-DSTRATA_ENABLE_ASAN=ON -DSTRATA_ENABLE_UBSAN=ON)
+          if [[ "${{ matrix.sanitizer }}" == "thread" ]]; then
+            flags=(-DSTRATA_ENABLE_TSAN=ON)
+          fi
+          cmake -S . -B build/sanitizer -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_COMPILER=clang++-21 "${flags[@]}"
+      - name: Build
+        run: cmake --build build/sanitizer -j 2
+      - name: Test
+        env:
+          ASAN_OPTIONS: detect_leaks=1:halt_on_error=1
+          UBSAN_OPTIONS: halt_on_error=1:print_stacktrace=1
+          TSAN_OPTIONS: halt_on_error=1
+        run: ctest --test-dir build/sanitizer --output-on-failure -j 2
+  compatibility:
+    runs-on: ubuntu-24.04
+    container: ubuntu:26.04
+    steps:
+      - name: Install toolchain
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends ca-certificates git cmake ninja-build g++-15 clang-21
+      - uses: actions/checkout@v4
+      - name: Exercise pack-index fallback and LTO
+        run: |
+          cmake -S . -B build/fallback -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_CXX_COMPILER=g++-15 -DSTRATA_FORCE_PACK_FALLBACK=ON -DSTRATA_ENABLE_LTO=ON
+          cmake --build build/fallback -j 2
+          ctest --test-dir build/fallback --output-on-failure -j 2
+      - name: Clang static analysis
+        run: |
+          for source in src/*.cpp; do
+            clang++-21 --analyze -std=c++26 -Iinclude -Xanalyzer -analyzer-output=text "$source"
+          done
