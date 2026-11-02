@@ -1,0 +1,32 @@
+# To display the perf.data header info, please use --header/--header-only options.
+#
+#
+# Total Lost Samples: 0
+#
+# Samples: 3K of event 'cycles:u'
+# Event count (approx.): 19008714138
+#
+# Overhead  Command  Shared Object         Symbol                  IPC   [IPC Coverage]
+# ........  .......  ....................  ......................  ....................
+#
+    13.47%  strata   [vdso]                [.] 0x0000000000000ad5  -      -            
+     5.80%  strata   [unknown]             [k] 0xffffffffa10001c8  -      -            
+     4.34%  strata   strata                [.] 0x000000000000f2a0  -      -            
+     3.79%  strata   strata                [.] 0x0000000000009ba0  -      -            
+     3.12%  strata   strata                [.] 0x0000000000009dad  -      -            
+     2.89%  strata   libc.so.6             [.] 0x00000000000a90bc  -      -            
+     2.20%  strata   strata                [.] 0x000000000000f2e1  -      -            
+     2.18%  strata   libc.so.6             [.] 0x00000000000a2a80  -      -            
+     1.92%  strata   strata                [.] 0x000000000000b8b7  -      -            
+     1.62%  strata   libc.so.6             [.] 0x00000000000a76da  -      -            
+     1.52%  strata   [unknown]             [k] 0xffffffffa1000116  -      -            
+     1.40%  strata   strata                [.] 0x0000000000009d84  -      -            
+     1.32%  strata   [unknown]             [k] 0xffffffffa136d7d4  -      -            
+     1.26%  strata   libc.so.6             [.] 0x00000000000a76a7  -      -            
+     1.20%  strata   strata                [.] 0x000000000000b8fd  -      -            
+     1.05%  strata   strata                [.] 0x0000000000009c9d  -      -            
+
+
+#
+# (Cannot load tips.txt file, please install perf!)
+#

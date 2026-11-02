@@ -33,6 +33,8 @@ struct channel_statistics {
 // Fixed-storage MPMC channel. All slot access and accounting share the same mutex,
 // so accepting an item, closing admission and discarding items have linearization
 // points independent of notification scheduling. Callers own all thread lifetimes.
+// T's operations run under that mutex and must not reenter the channel or acquire
+// a lock held by another caller while it invokes a channel operation.
 template<channel_item T>
 class bounded_channel final {
 public:
@@ -40,7 +42,11 @@ public:
     bounded_channel(const bounded_channel&) = delete;
     bounded_channel& operator=(const bounded_channel&) = delete;
 
-    [[nodiscard]] std::expected<void, error> push(T item, std::stop_token stop = {}) {
+    // Failed admission leaves an rvalue argument unchanged, allowing ownership to
+    // stay with the producer for retry or alternate delivery.
+    // The token is borrowed only for this synchronous call. Avoid copying its
+    // shared ownership counter on ready queues; a blocking wait takes its own copy.
+    [[nodiscard]] std::expected<void, error> push(T&& item, const std::stop_token& stop = {}) {
         std::unique_lock lock(mutex_);
         // The queue lock keeps readiness stable; register cancellation only when
         // blocking, while checking stop before every acceptance on both paths.
@@ -59,7 +65,13 @@ public:
         return {};
     }
 
-    [[nodiscard]] std::expected<void, error> try_push(T item) {
+    [[nodiscard]] std::expected<void, error> push(const T& item, const std::stop_token& stop = {})
+        requires std::copy_constructible<T> {
+        T copy(item);
+        return push(std::move(copy), stop);
+    }
+
+    [[nodiscard]] std::expected<void, error> try_push(T&& item) {
         std::unique_lock lock(mutex_);
         if (state_ != state::open) {
             return reject_closed();
@@ -74,6 +86,12 @@ public:
         return {};
     }
 
+    [[nodiscard]] std::expected<void, error> try_push(const T& item)
+        requires std::copy_constructible<T> {
+        T copy(item);
+        return try_push(std::move(copy));
+    }
+
     // Returns zero only when no more items can arrive. An empty destination is
     // a programming error rather than a shutdown signal.
     [[nodiscard]] std::size_t pop_batch(std::span<T> destination) {
@@ -85,6 +103,11 @@ public:
         const auto count = std::min(size_, destination.size());
         for (std::size_t i = 0; i < count; ++i) {
             destination[i] = std::move(slots_[head_]);
+            // A moved-from T may retain handles, even with a trivial destructor.
+            // Only trivially copyable items have no assignment cleanup to run.
+            if constexpr (!std::is_trivially_copyable_v<T>) {
+                slots_[head_] = T{};
+            }
             head_ = next(head_);
         }
         size_ -= count;
@@ -140,7 +163,7 @@ private:
     [[nodiscard]] std::size_t next(std::size_t index) const noexcept {
         return index + 1 == slots_.size() ? 0 : index + 1;
     }
-    void put(T item) noexcept {
+    void put(T&& item) noexcept {
         slots_[tail_] = std::move(item);
         tail_ = next(tail_);
         ++size_;

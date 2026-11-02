@@ -13,6 +13,8 @@ namespace strata::metrics {
 // Single-owner histogram; merge only after worker join. Bucket 0 contains 0ns,
 // bucket i contains [2^(i-1), 2^i-1]ns, with bucket 63 saturating to UINT64_MAX.
 // Quantiles are bucket upper bounds, capped by the observed maximum.
+// Precondition: represented counts (including merges) must fit in uint64_t.
+// Counters do not saturate. Percentile fractions use their exact binary64 value.
 class latency_histogram {
 public:
     static constexpr std::size_t bucket_count = 64;
@@ -44,8 +46,7 @@ public:
         if (fraction >= 1.0) {
             return maximum_;
         }
-        const auto rank = std::max(std::uint64_t{1}, static_cast<std::uint64_t>(
-            std::ceil(static_cast<long double>(fraction) * static_cast<long double>(count_))));
+        const auto rank = nearest_rank(count_, fraction);
         std::uint64_t cumulative{};
         for (std::size_t i = 0; i < bucket_count; ++i) {
             cumulative += buckets_[i];
@@ -59,6 +60,51 @@ public:
     }
 
 private:
+    [[nodiscard]] static std::uint64_t nearest_rank(std::uint64_t count, double fraction) noexcept {
+        static_assert(sizeof(double) == sizeof(std::uint64_t) &&
+                      std::numeric_limits<double>::is_iec559 &&
+                      std::numeric_limits<double>::digits == 53 &&
+                      std::numeric_limits<double>::max_exponent == 1024,
+                      "Strata latency ranks require IEEE-754 binary64");
+        const auto bits = std::bit_cast<std::uint64_t>(fraction);
+        const auto exponent = static_cast<unsigned>((bits >> 52U) & 0x7ffU);
+        auto significand = bits & ((std::uint64_t{1} << 52U) - 1U);
+        if (exponent != 0) {
+            significand |= std::uint64_t{1} << 52U;
+        }
+        const auto shift = exponent == 0 ? 1074U : 1075U - exponent;
+        if (shift >= 128U) {
+            return 1;
+        }
+
+        // Exact 64x53-bit multiplication avoids rounding a positive fractional
+        // rank down to an integer. This cold path needs at most 53 iterations.
+        std::uint64_t high{}, low{}, add_high{}, add_low = count;
+        while (significand != 0) {
+            if ((significand & 1U) != 0) {
+                const auto previous = low;
+                low += add_low;
+                high += add_high + static_cast<std::uint64_t>(low < previous);
+            }
+            add_high = (add_high << 1U) | (add_low >> 63U);
+            add_low <<= 1U;
+            significand >>= 1U;
+        }
+        std::uint64_t quotient{};
+        bool remainder{};
+        if (shift < 64U) {
+            quotient = (high << (64U - shift)) | (low >> shift);
+            remainder = (low & ((std::uint64_t{1} << shift) - 1U)) != 0;
+        } else if (shift == 64U) {
+            quotient = high;
+            remainder = low != 0;
+        } else {
+            quotient = high >> (shift - 64U);
+            remainder = low != 0 || (high & ((std::uint64_t{1} << (shift - 64U)) - 1U)) != 0;
+        }
+        return std::max(std::uint64_t{1}, quotient + static_cast<std::uint64_t>(remainder));
+    }
+
     std::array<std::uint64_t, bucket_count> buckets_{};
     std::uint64_t count_{};
     std::uint64_t maximum_{};

@@ -36,6 +36,10 @@ struct engine_snapshot {
 
 class engine final {
 public:
+    // Submission and shutdown may run concurrently. Shutdown joins owned workers;
+    // callers must finish their own API calls before destroying this object.
+    // snapshot() requires completed shutdown. A submitted stop token is borrowed
+    // only until that synchronous submit call returns; no reference is retained.
     // Configuration errors are values. Allocation failure may throw bad_alloc;
     // worker startup system errors are translated into io_error.
     [[nodiscard]] static std::expected<std::unique_ptr<engine>, error> create(config configuration);
@@ -45,7 +49,7 @@ public:
     engine(engine&&) = delete;
     engine& operator=(engine&&) = delete;
 
-    [[nodiscard]] std::expected<void, error> submit(event item, std::stop_token stop = {});
+    [[nodiscard]] std::expected<void, error> submit(event item, const std::stop_token& stop = {});
     [[nodiscard]] std::expected<void, error> try_submit(event item);
     void close() noexcept;
     void cancel() noexcept;

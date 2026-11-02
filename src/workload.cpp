@@ -38,6 +38,12 @@ event generate(std::uint64_t sequence, const options& settings) noexcept {
             sequence * 1000U};
 }
 
+std::uint64_t fingerprint(const event& sample) noexcept {
+    return mix(sample.sequence ^ std::bit_cast<std::uint64_t>(sample.value) ^
+               (static_cast<std::uint64_t>(sample.series) * 0x9e3779b97f4a7c15ULL) ^
+               std::rotl(sample.timestamp_ns, 17));
+}
+
 std::expected<void, error> validate(const options& settings) {
     if (auto result = strata::validate(settings.runtime); !result) return result;
     if (settings.producers == 0 || settings.producers > 256 || settings.events == 0 ||
@@ -78,7 +84,7 @@ std::expected<run_result, error> run(const options& settings, std::stop_token st
                             break;
                         }
                         ++result.generated;
-                        result.fingerprint += mix(sample.sequence ^ std::bit_cast<std::uint64_t>(sample.value));
+                        result.fingerprint += fingerprint(sample);
                         if (settings.burst > 0 && ++burst_count == settings.burst) {
                             burst_count = 0;
                             std::this_thread::sleep_for(settings.pause);
@@ -120,6 +126,15 @@ std::expected<run_result, error> run(const options& settings, std::stop_token st
 
 void write_json(std::ostream& out, const options& settings, const run_result& result) {
     const auto& m = result.metrics;
+    // Consume every aggregate field outside the timed interval, including with
+    // LTO. Source equivalence and aggregate observation are different checks.
+    std::uint64_t aggregate_digest{};
+    for (const auto& s : m.series) {
+        aggregate_digest += mix(s.count ^ s.series ^ std::bit_cast<std::uint64_t>(s.mean) ^
+            std::rotl(std::bit_cast<std::uint64_t>(s.m2), 11) ^
+            std::rotl(std::bit_cast<std::uint64_t>(s.minimum), 23) ^
+            std::rotl(std::bit_cast<std::uint64_t>(s.maximum), 37));
+    }
     out << std::setprecision(10)
         << "{\"workers\":" << settings.runtime.workers
         << ",\"producers\":" << settings.producers
@@ -132,6 +147,7 @@ void write_json(std::ostream& out, const options& settings, const run_result& re
         << ",\"requested\":" << settings.events << ",\"accepted\":" << m.accepted
         << ",\"processed\":" << m.processed << ",\"rejected\":" << m.rejected
         << ",\"discarded\":" << m.discarded << ",\"fingerprint\":" << result.fingerprint
+        << ",\"aggregate_digest\":" << aggregate_digest
         << ",\"cancelled\":" << (result.cancelled ? "true" : "false")
         << ",\"elapsed_ns\":" << result.elapsed.count()
         << ",\"throughput_events_s\":" << result.events_per_second()

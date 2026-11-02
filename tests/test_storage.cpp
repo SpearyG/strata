@@ -175,6 +175,79 @@ void test_encode_validation() {
     }
 }
 
+void test_checksum_valid_mutations() {
+    const auto encoded = storage::encode_frame(sample);
+    require(encoded, "encode structured mutation fixture");
+    constexpr auto max32 = std::numeric_limits<std::uint32_t>::max();
+    constexpr std::array<std::uint32_t, 6> counts{0, 1, 3, 4096, 4097, max32};
+    constexpr std::array<std::uint32_t, 5> lengths{0, 32, 96, 131072, max32};
+    for (const auto count : counts) {
+        for (const auto length : lengths) {
+            auto bytes = *encoded;
+            put32(bytes, 12, count);
+            put32(bytes, 16, length);
+            refresh_header(bytes);
+            const bool valid_length = count > 0 && count <= storage::max_frame_events &&
+                                      length == count * storage::event_wire_bytes;
+            if (valid_length && length <= bytes.size() - storage::frame_header_bytes) {
+                put32(bytes, 28, storage::crc32c(std::span<const std::byte>{bytes}.subspan(
+                    storage::frame_header_bytes, length)));
+            }
+            const auto decoded = storage::decode_frame(bytes);
+            if (!valid_length) {
+                check(!decoded && decoded.error().code == errc::corrupt,
+                      "checksum-valid hostile length rejected before allocation");
+            } else if (length > bytes.size() - storage::frame_header_bytes) {
+                check(!decoded && decoded.error().code == errc::truncated,
+                      "bounded valid length with short payload is truncated");
+            } else {
+                require(decoded, "checksum-valid shorter or complete frame");
+                check(decoded->events.size() == count &&
+                      decoded->consumed == storage::frame_header_bytes + length,
+                      "first-frame count and consumed exclude trailing bytes");
+            }
+        }
+    }
+    for (const auto offset : {std::size_t{10}, std::size_t{11}, std::size_t{20},
+                              std::size_t{21}, std::size_t{22}, std::size_t{23}}) {
+        auto bytes = *encoded;
+        bytes[offset] ^= std::byte{1};
+        refresh_header(bytes);
+        const auto decoded = storage::decode_frame(bytes);
+        check(!decoded && decoded.error().code == errc::corrupt,
+              "checksum-valid header layout mutation rejected");
+    }
+    for (std::size_t i = 0; i < sample.size(); ++i) {
+        for (std::size_t reserved_byte = 0; reserved_byte < 4; ++reserved_byte) {
+            auto bytes = *encoded;
+            bytes[storage::frame_header_bytes + i * storage::event_wire_bytes + 12 + reserved_byte] = std::byte{1};
+            refresh_payload(bytes);
+            const auto decoded = storage::decode_frame(bytes);
+            check(!decoded && decoded.error().code == errc::corrupt,
+                  "checksum-valid reserved record byte rejected");
+        }
+    }
+    constexpr std::array<std::uint64_t, 6> invalid_bits{
+        0x7ff0000000000000ULL, 0xfff0000000000000ULL, // infinities
+        0x7ff0000000000001ULL, 0xfff0000000000001ULL, // signaling NaNs
+        0x7ff8000000000001ULL, 0xfff8000000000001ULL}; // quiet NaNs
+    const auto reject_bits = [&](std::uint64_t bits) {
+        auto bytes = *encoded;
+        for (std::size_t i = 0; i < 8; ++i) {
+            bytes[48 + i] = static_cast<std::byte>((bits >> (i * 8U)) & 0xffU);
+        }
+        refresh_payload(bytes);
+        const auto decoded = storage::decode_frame(bytes);
+        check(!decoded && decoded.error().code == errc::corrupt,
+              "checksum-valid non-finite or out-of-domain payload rejected");
+    };
+    for (const auto bits : invalid_bits) reject_bits(bits);
+    reject_bits(std::bit_cast<std::uint64_t>(std::nextafter(1.0e100,
+        std::numeric_limits<double>::infinity())));
+    reject_bits(std::bit_cast<std::uint64_t>(std::nextafter(-1.0e100,
+        -std::numeric_limits<double>::infinity())));
+}
+
 void test_journal_and_recovery() {
     temporary_directory fixture;
     const auto path = fixture.path / "events.strata";
@@ -216,6 +289,17 @@ void test_journal_and_recovery() {
 
     auto frame = storage::encode_frame(sample);
     require(frame, "encode tail fixture");
+    for (std::size_t prefix = 0; prefix < frame->size(); ++prefix) {
+        write_file(path, std::span<const std::byte>{*frame}.first(prefix));
+        std::uint64_t calls{};
+        replayed = storage::replay(path, [&calls](std::span<const event>) -> std::expected<void, error> {
+            ++calls;
+            return {};
+        });
+        require(replayed, "recover every incomplete first-frame prefix");
+        check(calls == 0 && replayed->events == 0 && replayed->frames == 0 &&
+              replayed->truncated_tail == (prefix != 0), "partial first frame is never delivered");
+    }
     for (std::size_t tail = 0; tail < frame->size(); ++tail) {
         auto file = *frame;
         file.insert(file.end(), frame->begin(), frame->begin() + static_cast<std::ptrdiff_t>(tail));
@@ -269,9 +353,10 @@ int main() {
         test_crc_and_roundtrip();
         test_parser_boundaries();
         test_encode_validation();
+        test_checksum_valid_mutations();
         test_journal_and_recovery();
         test_bounded_random_bytes();
-        std::cout << "storage: 5 groups passed (CRC, codec, hostile input, journal, recovery)\n";
+        std::cout << "storage: 6 groups passed (CRC, codec, hostile input, structured mutations, journal, recovery)\n";
         return 0;
     } catch (const std::exception& failure) {
         std::cerr << "storage test failure: " << failure.what() << '\n';

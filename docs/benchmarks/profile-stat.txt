@@ -1,0 +1,20 @@
+# started on Sun Nov  1 21:37:15 2026
+
+
+ Performance counter stats for 'build/audit-baseline/build/profile/strata --events 20000000 --workers 4 --producers 4':
+
+       17322595998      task-clock:u                     #    6.198 CPUs utilized             
+                 0      context-switches:u               #    0.000 /sec                      
+       16251042468      cycles:u                         #    0.938 GHz                       
+       12959557419      instructions:u                   #    0.80  insn per cycle            
+         432489351      cache-references:u               #   24.967 M/sec                     
+         118617551      cache-misses:u                   #   27.43% of all cache refs         
+        2124028929      branches:u                       #  122.616 M/sec                     
+          23330578      branch-misses:u                  #    1.10% of all branches           
+
+       2.794702524 seconds time elapsed
+
+       5.618871000 seconds user
+       9.225946000 seconds sys
+
+

@@ -107,6 +107,8 @@ downloaded C++ dependencies. Locally exercised Linux toolchains are GCC 15.2.0 a
 Clang 21.1.8, both with libstdc++ 15 and CMake 4.2.3. CI uses Ubuntu 26.04 container
 packages on Ubuntu 24.04 runners, with GCC 15 and Clang 21. Native MSVC is not a
 validated target; Windows users can use WSL2 with these Linux toolchains.
+Building the tests also requires Python 3.9+ (standard library only). Set
+`BUILD_TESTING=OFF` for a library/tools build without Python.
 
 `CXX_STANDARD 26`, `CXX_STANDARD_REQUIRED ON` and extensions disabled prevent silent
 standard downgrade. CMake compile-checks `std::expected`. C++26 pack indexing
@@ -213,6 +215,14 @@ admission wait. It excludes source generation time. Histograms use power-of-two
 nanosecond buckets; quantiles are conservative bucket bounds, not exact samples.
 Queue high-watermark is the sum of individual shard peaks, not a simultaneous
 peak. `rejected` counts failed attempts, so a later retried event may be accepted.
+The source fingerprint covers all four event fields. `aggregate_digest` consumes
+all summary fields after timing, including under LTO; floating scheduling effects
+can change this digest. Neither value is cryptographic.
+
+Replay cancellation reports partial accepted/processed/discarded accounting and
+`replay_complete`. `truncated_tail` is null if cancellation prevented inspecting
+EOF; a complete replay has a boolean tail status. Other replay failures still
+return an error. CLI and benchmark output failures return a nonzero status.
 
 ## Verification and performance
 
@@ -233,6 +243,10 @@ as JSON Lines. It includes producer startup, generation, backpressure and draini
 engine allocation is excluded. `--work` simulates source work, not consumer work.
 See [measured results and methodology](docs/performance.md) for actual measurements,
 optimization evidence, latency and environment details.
+The [production audit](docs/audit.md) records confirmed defects, invariants,
+fault injection, remaining risks and validation. Its controlled comparison uses
+one harness compiled against both engine revisions, with full reference checks
+outside timing and raw samples retained under `docs/benchmarks/`.
 
 ## Limits and next steps
 
