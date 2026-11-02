@@ -1,0 +1,236 @@
+{
+  "audit_completed": "2026-11-02",
+  "baseline_ref": "848d59e83de36597dd02220eaeef6aea41496a15",
+  "measured_candidate_ref": "8105e61f0334d8ea694fe847a6f83e884f5ff38e",
+  "environment": {
+    "cpu": "AMD Ryzen 5 5600X; 6 cores, 12 logical CPUs",
+    "os": "Ubuntu 26.04.1 LTS / WSL2 Linux 6.18.54.1-microsoft-standard-WSL2",
+    "gcc": "15.2.0 (Ubuntu 15.2.0-16ubuntu1)",
+    "cmake": "4.2.3",
+    "libstdc++": "15",
+    "glibc": "2.43",
+    "perf": "6.18.54.1.g26d1ceb55087"
+  },
+  "controlled_build": {
+    "standard": "c++26",
+    "flags": "-g -O3 -DNDEBUG",
+    "lto": false,
+    "native_cpu": false,
+    "cpu_affinity": "0-11",
+    "cpu_isolation": false,
+    "fixed_frequency": false
+  },
+  "legacy_capture_date": "2026-11-01",
+  "legacy_original_sha256": "626d9fbe36aa177d7f766d1afc0ce28da587bdb032bfd1316a11e5fa5c4bfe46",
+  "notes": [
+    "Initial-audit records precede the final outside-timing finite/identity validation hardening.",
+    "Primary audit-* records use the hardened identical harness against both engine refs.",
+    "Legacy runs use the original application harness, whose checksum omits series/timestamp.",
+    "Raw evidence is intentional permanent documentation; temporary build/profiling binaries are ignored.",
+    "No confidence intervals, dedicated-host guarantee, or universal speedup is claimed."
+  ],
+  "records": [
+    {
+      "file": "audit-hot-key-5m.jsonl",
+      "sha256": "24751cd1199998a9d864189c14f001af74ddaf9f867093e9ea1de109567d72df",
+      "statistics": {
+        "after": {
+          "median": 6486713.85948,
+          "minimum": 5988094.05224,
+          "maximum": 6547633.67223,
+          "p50_upper_ns_median": 32767,
+          "p95_upper_ns_median": 131071,
+          "p99_upper_ns_median": 262143,
+          "max_latency_ns": 6072001
+        },
+        "before": {
+          "median": 6298640.52713,
+          "minimum": 6006238.36266,
+          "maximum": 6551148.18312,
+          "p50_upper_ns_median": 32767,
+          "p95_upper_ns_median": 262143,
+          "p99_upper_ns_median": 524287,
+          "max_latency_ns": 6533456
+        }
+      }
+    },
+    {
+      "file": "audit-no-latency-10m.jsonl",
+      "sha256": "bc3a60c4f86fabc75d7ede452688d2d6a5b5f05e78a134dc193f8ad25e55882b",
+      "statistics": {
+        "after": {
+          "median": 8172912.25147,
+          "minimum": 5831189.23615,
+          "maximum": 9339644.56826,
+          "p50_upper_ns_median": 0,
+          "p95_upper_ns_median": 0,
+          "p99_upper_ns_median": 0,
+          "max_latency_ns": 0
+        },
+        "before": {
+          "median": 6410405.64943,
+          "minimum": 4157607.7435,
+          "maximum": 8123576.64732,
+          "p50_upper_ns_median": 0,
+          "p95_upper_ns_median": 0,
+          "p99_upper_ns_median": 0,
+          "max_latency_ns": 0
+        }
+      }
+    },
+    {
+      "file": "audit-uniform-5m.jsonl",
+      "sha256": "2b31b76d621d219ef2e61ca499d56a048ea1fc3cf5867b6f04790814b7049596",
+      "statistics": {
+        "after": {
+          "median": 6198077.77279,
+          "minimum": 5140485.54255,
+          "maximum": 7248516.76283,
+          "p50_upper_ns_median": 8191,
+          "p95_upper_ns_median": 131071,
+          "p99_upper_ns_median": 524287,
+          "max_latency_ns": 8309536
+        },
+        "before": {
+          "median": 5861115.44449,
+          "minimum": 5269718.8889,
+          "maximum": 6576327.20391,
+          "p50_upper_ns_median": 8191,
+          "p95_upper_ns_median": 131071,
+          "p99_upper_ns_median": 524287,
+          "max_latency_ns": 4255371
+        }
+      }
+    },
+    {
+      "file": "initial-audit-hot-key-5m.jsonl",
+      "sha256": "307af79749895c7374db196f07b60dfd09274aa1bda87789e45b6d8a705af613",
+      "statistics": {
+        "after": {
+          "median": 6514110.81212,
+          "minimum": 6195979.58523,
+          "maximum": 6662298.74813,
+          "p50_upper_ns_median": 32767,
+          "p95_upper_ns_median": 131071,
+          "p99_upper_ns_median": 262143,
+          "max_latency_ns": 12189607
+        },
+        "before": {
+          "median": 6501062.349,
+          "minimum": 6175224.15665,
+          "maximum": 6627294.44058,
+          "p50_upper_ns_median": 32767,
+          "p95_upper_ns_median": 131071,
+          "p99_upper_ns_median": 524287,
+          "max_latency_ns": 7031989
+        }
+      }
+    },
+    {
+      "file": "initial-audit-no-latency-10m.jsonl",
+      "sha256": "2da79fda4c4003b72c67f17e50776f6f3ea32de92662e6348c4270f285b8ac54",
+      "statistics": {
+        "after": {
+          "median": 9682765.14388,
+          "minimum": 8536496.29688,
+          "maximum": 10365165.8824,
+          "p50_upper_ns_median": 0,
+          "p95_upper_ns_median": 0,
+          "p99_upper_ns_median": 0,
+          "max_latency_ns": 0
+        },
+        "before": {
+          "median": 6687617.52338,
+          "minimum": 5581499.03284,
+          "maximum": 8305175.81131,
+          "p50_upper_ns_median": 0,
+          "p95_upper_ns_median": 0,
+          "p99_upper_ns_median": 0,
+          "max_latency_ns": 0
+        }
+      }
+    },
+    {
+      "file": "initial-audit-uniform-5m.jsonl",
+      "sha256": "45d518d0e3ca9a7252eb374cc0784cedda8b5909d132c032b58545ebed471535",
+      "statistics": {
+        "after": {
+          "median": 5962362.61461,
+          "minimum": 4165873.47047,
+          "maximum": 7139298.67162,
+          "p50_upper_ns_median": 8191,
+          "p95_upper_ns_median": 131071,
+          "p99_upper_ns_median": 524287,
+          "max_latency_ns": 3377156
+        },
+        "before": {
+          "median": 5830604.51519,
+          "minimum": 3564174.0973,
+          "maximum": 7034848.33262,
+          "p50_upper_ns_median": 16383,
+          "p95_upper_ns_median": 262143,
+          "p99_upper_ns_median": 1048575,
+          "max_latency_ns": 9411539
+        }
+      }
+    },
+    {
+      "file": "legacy-final-5m.jsonl",
+      "sha256": "626d9fbe36aa177d7f766d1afc0ce28da587bdb032bfd1316a11e5fa5c4bfe46",
+      "statistics": {
+        "baseline": {
+          "median": 5794412.204,
+          "minimum": 5126306.05,
+          "maximum": 6744022.184,
+          "p50_upper_ns_median": 16383,
+          "p95_upper_ns_median": 65535,
+          "p99_upper_ns_median": 262143,
+          "max_latency_ns": 4167519
+        },
+        "batched": {
+          "median": 6630558.642,
+          "minimum": 5130357.99,
+          "maximum": 6783617.48,
+          "p50_upper_ns_median": 8191,
+          "p95_upper_ns_median": 65535,
+          "p99_upper_ns_median": 131071,
+          "max_latency_ns": 8996404
+        }
+      }
+    },
+    {
+      "file": "legacy-rerun-5m.jsonl",
+      "sha256": "315ada83308427b199f425f855d08cc76cbaab034a3768eb279a226864ea423c",
+      "statistics": {
+        "baseline": {
+          "median": 5825348.683,
+          "minimum": 5570642.278,
+          "maximum": 6724279.26,
+          "p50_upper_ns_median": 16383,
+          "p95_upper_ns_median": 131071,
+          "p99_upper_ns_median": 524287,
+          "max_latency_ns": 5669873
+        },
+        "batched": {
+          "median": 6073047.726,
+          "minimum": 5371160.91,
+          "maximum": 6573040.609,
+          "p50_upper_ns_median": 8191,
+          "p95_upper_ns_median": 65535,
+          "p99_upper_ns_median": 262143,
+          "max_latency_ns": 6155306
+        }
+      }
+    }
+  ],
+  "profiles": [
+    {
+      "file": "profile-flat.txt",
+      "sha256": "9b3d402cd01f3b7c3d59bcfda084f1c29cdf46d8652b7fabf9bce8021239eeb2"
+    },
+    {
+      "file": "profile-stat.txt",
+      "sha256": "2fb60d28de9a18704b15af346006a8f8d4859399c1519b0a2e3edbfd611c1c81"
+    }
+  ]
+}

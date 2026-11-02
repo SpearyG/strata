@@ -1,2 +1,4 @@
 * text=auto eol=lf
 *.png binary
+# Keep the profiler's original aligned output byte-for-byte for evidence hashes.
+docs/benchmarks/profile-*.txt -whitespace

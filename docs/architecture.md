@@ -70,6 +70,13 @@ surface and avoids reclamation protocols, ABA problems, and producer reservation
 holes. It is not lock-free and does not promise fairness or a hard latency bound.
 Producers targeting the same shard still contend on that mutex.
 
+The channel takes an rvalue by reference and moves only after successful
+admission, so full/closed/cancelled sends preserve the producer's ownership.
+Copyable lvalue calls copy before entering admission. Popped nontrivially-copyable
+slots reset to an empty value: a valid move is allowed to leave resources in its
+source. Payload operations execute under the queue mutex and must neither reenter
+the channel nor acquire locks held by another caller invoking the channel.
+
 The worker removes up to `batch_size` available events in one critical section;
 it never waits for a full batch. It then processes them without holding the
 queue lock. Removing a batch wakes all blocked producers because several slots

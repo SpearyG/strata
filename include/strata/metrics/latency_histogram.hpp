@@ -13,6 +13,8 @@ namespace strata::metrics {
 // Single-owner histogram; merge only after worker join. Bucket 0 contains 0ns,
 // bucket i contains [2^(i-1), 2^i-1]ns, with bucket 63 saturating to UINT64_MAX.
 // Quantiles are bucket upper bounds, capped by the observed maximum.
+// Precondition: represented counts (including merges) must fit in uint64_t.
+// Counters do not saturate. Percentile fractions use their exact binary64 value.
 class latency_histogram {
 public:
     static constexpr std::size_t bucket_count = 64;
