@@ -8,8 +8,11 @@ The library, load generator and benchmark use only the C++ standard library.
 This is a focused systems component: useful for in-process service telemetry,
 simulation measurements and replayable event analysis. It deliberately keeps the
 concurrency and failure model small enough to audit. It is not a network service
-or a durable database. Version 0.1 is tested engineering work, not a claim of
-proven operation under every production workload.
+or a durable database.
+
+Strata v0.1.0 is an experimental systems component with extensive automated
+testing and sanitizer coverage. It is not production-certified and provides no
+hard realtime, durability or universal performance guarantees.
 
 ## Features
 
@@ -142,7 +145,6 @@ ctest --test-dir build/release --output-on-failure
 ./build/release/strata_example
 ```
 
-The repository is private; cloning requires an authorized GitHub account.
 `clang++-21` can replace `g++-15`. Build presets also work:
 
 ```sh

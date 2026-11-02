@@ -1,8 +1,10 @@
 # Staff-level adversarial audit
 
-Completed 2026-11-02 against private repository `SpearyG/strata`, baseline
-`848d59e83de36597dd02220eaeef6aea41496a15`. Work is proposed on
-`audit/staff-level-review`; this audit does not merge it into `main`.
+Completed 2026-11-02 for `SpearyG/strata` against baseline
+`848d59e83de36597dd02220eaeef6aea41496a15`. The reviewed changes on
+`audit/staff-level-review` were subsequently merged through
+[PR #1](https://github.com/SpearyG/strata/pull/1) for v0.1.0, preserving all ten
+audit commits in merge commit `6ac7d4fa27ccce62dfe7d2a58bc75756d86a6604`.
 
 ## Scope and interpretation
 
@@ -142,9 +144,11 @@ measurement. Finite counters, generic payload lock obligations, dense fixed keys
 no live snapshots, no crash durability, and unvalidated native MSVC/complete
 32-bit runtime support remain limitations.
 
-Recommendation: merge the reviewed fixes after the final validation/CI is green,
-while retaining these limitations. That is a recommendation for this PR, not an
-unconditional production sign-off. This audit does not merge the branch.
+The audit recommended merging the reviewed fixes after green validation while
+retaining these limitations. PR #1 was subsequently merged with a normal merge
+commit; its [main CI run](https://github.com/SpearyG/strata/actions/runs/41393120516)
+passed all seven jobs. This remains an audit of a focused experimental component,
+not an unconditional production sign-off.
 
 Library consumers must recompile: synchronous stop-token passage and generic
 channel send overloads have changed. Binary compatibility with the original
