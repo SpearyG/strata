@@ -128,13 +128,20 @@ int execute(int argc, char** argv) {
     const auto snapshot = runtime.snapshot();
     if (!snapshot || snapshot->processed != c.events || snapshot->accepted != c.events ||
         snapshot->rejected != 0 || snapshot->discarded != 0 || source_fingerprint != expected_fingerprint ||
-        snapshot->latency.count() != (c.runtime.measure_latency ? c.events : 0))
+        snapshot->latency.count() != (c.runtime.measure_latency ? c.events : 0) ||
+        snapshot->series.size() != expected.size())
         throw std::runtime_error("benchmark count/source invariant failed");
     std::uint64_t aggregate_digest{};
+    std::vector<bool> seen(expected.size());
     for (const auto& actual : snapshot->series) {
+        if (actual.series >= expected.size() || seen[actual.series])
+            throw std::runtime_error("benchmark series identity invariant failed");
+        seen[actual.series] = true;
         const auto& r = expected[actual.series];
         if (actual.count != r.count || (r.count != 0 &&
-            (std::abs(static_cast<long double>(actual.mean) - r.mean) > 1e-8L ||
+            (!std::isfinite(actual.mean) || !std::isfinite(actual.m2) ||
+             !std::isfinite(actual.minimum) || !std::isfinite(actual.maximum) ||
+             std::abs(static_cast<long double>(actual.mean) - r.mean) > 1e-8L ||
              std::abs(static_cast<long double>(actual.m2) - r.m2) > std::max(1e-6L, std::abs(r.m2) * 1e-10L) ||
              actual.minimum != r.minimum || actual.maximum != r.maximum)))
             throw std::runtime_error("benchmark aggregate reference mismatch");
